@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen>
   // ── VBHC Brand Colors ────────────────────────────────────
   static const Color _gold = Color(0xFFC9A155);
   static const Color _bgWhite = Color(0xFFFFFFFF);
-  static const Color _textBlack = Color(0xFF000000);
+  static const Color _textBlack = Color.fromARGB(255, 233, 227, 227);
   static const Color _iconGray = Color(0xFF626567);
   static const Color _inputBorder = Color(0xFFbbbbbb);
   static const Color _trustText = Color(0xFF555555);

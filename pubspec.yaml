@@ -10,14 +10,90 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  flutter_bloc: ^8.1.3
-  bloc: ^8.1.2
-  shared_preferences: ^2.2.2
+
+  # ── State Management ──────────────────────────────────────────────────────
+  flutter_bloc: ^9.1.1
+  bloc: ^9.2.1
+
+  # ── Networking ────────────────────────────────────────────────────────────
+  dio: ^5.4.3                          # HTTP client (replaces RTK Query fetch)
+  pretty_dio_logger: ^1.3.1            # Log requests/responses in debug mode
+
+  # ── Secure Storage ────────────────────────────────────────────────────────
+  flutter_secure_storage: ^10.2.0       # Store access & refresh tokens securely
+
+  # ── Local Storage ─────────────────────────────────────────────────────────
+  shared_preferences: ^2.2.2           # Lightweight key-value (non-sensitive prefs)
+
+  # ── Navigation ────────────────────────────────────────────────────────────
+  go_router: ^17.2.3                   # Declarative routing (replaces React Navigation)
+
+  # ── UI Utilities ──────────────────────────────────────────────────────────
+  flutter_svg: ^2.0.10+1              # SVG image support
+  cached_network_image: ^3.3.1        # Cached remote images
+  shimmer: ^3.0.0                     # Skeleton/loading shimmer effect
+  lottie: ^3.1.2                      # Lottie animations (assets/lottie/)
+  fluttertoast: ^9.0.0                # Toast messages (replaces RN Toast)
+  badges: ^3.1.2                      # Notification badge on icons
+
+  # ── Forms & Validation ────────────────────────────────────────────────────
+  flutter_form_builder: ^10.3.0+2        # Form management
+  form_builder_validators: ^11.3.0    # Built-in validators
+
+  # ── Date & Time ───────────────────────────────────────────────────────────
+  intl: ^0.20.2                       # Date formatting, i18n
+  syncfusion_flutter_datepicker: ^33.2.6  # Rich date/range picker (used in TA/HRMS)
+
+  # ── File Handling ─────────────────────────────────────────────────────────
+  file_picker: ^11.0.2                 # Pick files for upload (attachments, docs)
+  image_picker: ^1.1.2                # Pick images from gallery/camera
+  open_filex: ^4.3.4                  # Open downloaded files (PDF, Excel, etc.)
+  path_provider: ^2.1.3               # Get temp/app directories for downloads
+  permission_handler: ^12.0.1         # Runtime permissions (camera, storage)
+
+  # ── PDF & Documents ───────────────────────────────────────────────────────
+  flutter_pdfview: ^1.3.2             # In-app PDF viewer
+  syncfusion_flutter_pdf: ^33.2.6    # PDF generation (quotation, invoice)
+
+  # ── Charts & Dashboard ────────────────────────────────────────────────────
+  fl_chart: ^1.2.0                   # Charts for stock/CRM dashboards
+  syncfusion_flutter_charts: ^33.2.6 # Advanced charts (used in reports)
+
+  # ── Maps & Location ───────────────────────────────────────────────────────
+  geolocator: ^14.0.2                 # Get device GPS location (check-in)
+  google_maps_flutter: ^2.7.0         # Map view for agent tracking
+
+  # ── QR Code ───────────────────────────────────────────────────────────────
+  qr_flutter: ^4.1.0                  # Generate QR codes (payment QR)
+  mobile_scanner: ^7.2.0              # Scan QR codes
+
+  # ── Connectivity ──────────────────────────────────────────────────────────
+  connectivity_plus: ^7.1.1           # Detect network status
+  internet_connection_checker_plus: ^3.0.0  # Verify actual internet access
+
+  # ── Push Notifications ────────────────────────────────────────────────────
+  firebase_core: ^4.9.0               # Firebase core (required for FCM)
+  firebase_messaging: ^16.2.2         # Push notifications (pushNotification API)
+  flutter_local_notifications: ^21.0.0 # Show local/foreground notifications
+
+  # ── Utilities ─────────────────────────────────────────────────────────────
+  equatable: ^2.0.5                   # Value equality for Bloc states/events
+  collection: ^1.18.0                 # Extra collection utilities
+  rxdart: ^0.28.0                     # Reactive streams (debounce search inputs)
+  uuid: ^4.4.0                        # Generate unique IDs
+  url_launcher: ^6.3.0                # Open URLs / mailto / tel links
+  share_plus: ^12.0.2                  # Share files/text natively
+  device_info_plus: ^12.4.0           # Device info for User-Agent header
+  package_info_plus: ^9.0.1           # App version (appVersion constant)
+  logger: ^2.4.0                      # Structured logging
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.9                # Code generation
+  json_serializable: ^6.7.1           # JSON model generation
+  mocktail: ^1.0.4                    # Mocking for unit tests
 
 flutter:
   uses-material-design: true
