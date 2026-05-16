@@ -1,9 +1,22 @@
-import 'package:flutter/material.dart';
+// ============================================================
+// lib/presentation/screens/user/login_screen.dart
+// ✅ VBHCColors (Light/Dark auto switch)
+// ✅ CustomDropdownPicker (Entity - Real API)
+// ✅ Real API (getEntity + login + getUserModules)
+// ✅ AuthCubit connect
+// ✅ Animations (logo, card, button, shake)
+// ✅ Captcha support (Environment.showCaptcha flag)
+// ============================================================
 
-// ============================================================
-// VBHC Login Screen - Flutter
-// React Native LoginScreen.jsx → Flutter Exact Match
-// ============================================================
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../bloc/auth/auth_cubit.dart';
+import '../../../bloc/auth/auth_state.dart';
+import '../../../bloc/theme/theme_cubit.dart';
+import '../../../core/colors/app_colors.dart';
+import '../../../core/constants/environment.dart';
+import '../../../data/models/entity_model.dart';
+import '../../widgets/pickers/customdropdown.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,48 +27,39 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
-  // ── Form State ──────────────────────────────────────────
-  String _username = '';
-  String _password = '';
-  String _entityName = '';
+  // ── Controllers ──────────────────────────────────────────
+  final _usernameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _captchaCtrl = TextEditingController();
   bool _showPassword = false;
-  bool _isLoading = false;
-  bool _entityOpen = false;
-
-  // Dummy entities list (API-ல இருந்து வரும்)
-  final List<String> _entities = ['VBHC Entity 1', 'VBHC Entity 2'];
-
-  // ── Controllers ─────────────────────────────────────────
-  final TextEditingController _usernameCtrl = TextEditingController();
-  final TextEditingController _passwordCtrl = TextEditingController();
 
   // ── Animation Controllers ────────────────────────────────
   late AnimationController _logoAnimCtrl;
   late AnimationController _cardAnimCtrl;
   late AnimationController _buttonAnimCtrl;
+  late AnimationController _shakeAnimCtrl;
 
   late Animation<double> _logoOpacity;
   late Animation<double> _cardSlide;
   late Animation<double> _buttonScale;
-
-  // ── VBHC Brand Colors ────────────────────────────────────
-  static const Color _gold = Color(0xFFC9A155);
-  static const Color _bgWhite = Color(0xFFFFFFFF);
-  static const Color _textBlack = Color.fromARGB(255, 233, 227, 227);
-  static const Color _iconGray = Color(0xFF626567);
-  static const Color _inputBorder = Color(0xFFbbbbbb);
-  static const Color _trustText = Color(0xFF555555);
-  static const Color _bgScreen = Color(0xFFecf0f1);
+  late Animation<double> _shakeAnim;
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
     _startAnimations();
+
+    // RN: useGetEntityQuery() + useGetCaptachaQuery()
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthCubit>().loadEntities();
+      if (Environment.showCaptcha) {
+        context.read<AuthCubit>().loadCaptcha();
+      }
+    });
   }
 
   void _setupAnimations() {
-    // Logo fade in (logoAnim)
     _logoAnimCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -64,7 +68,6 @@ class _LoginScreenState extends State<LoginScreen>
       CurvedAnimation(parent: _logoAnimCtrl, curve: Curves.easeOut),
     );
 
-    // Card slide up (cardAnim: 40 → 0)
     _cardAnimCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -73,7 +76,6 @@ class _LoginScreenState extends State<LoginScreen>
       CurvedAnimation(parent: _cardAnimCtrl, curve: Curves.easeOutCubic),
     );
 
-    // Button scale (buttonAnim: 0.9 → 1)
     _buttonAnimCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -81,10 +83,21 @@ class _LoginScreenState extends State<LoginScreen>
     _buttonScale = Tween<double>(begin: 0.9, end: 1.0).animate(
       CurvedAnimation(parent: _buttonAnimCtrl, curve: Curves.easeOut),
     );
+
+    // Shake - captcha refresh
+    _shakeAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _shakeAnim = TweenSequence([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 8.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 8.0, end: -8.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -8.0, end: 6.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 6.0, end: 0.0), weight: 1),
+    ]).animate(_shakeAnimCtrl);
   }
 
   void _startAnimations() {
-    // Parallel animations - exact like RN Animated.parallel
     _logoAnimCtrl.forward();
     _cardAnimCtrl.forward();
     _buttonAnimCtrl.forward();
@@ -95,146 +108,111 @@ class _LoginScreenState extends State<LoginScreen>
     _logoAnimCtrl.dispose();
     _cardAnimCtrl.dispose();
     _buttonAnimCtrl.dispose();
+    _shakeAnimCtrl.dispose();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
+    _captchaCtrl.dispose();
     super.dispose();
   }
 
-  // ── Handle Login ─────────────────────────────────────────
+  // ── Login ─────────────────────────────────────────────────
+  // RN: handleLogin() → login().unwrap() → getUserModule()
   void _handleLogin() {
-    if (_entityName.isEmpty) {
-      _showToast("Please select entity");
-      return;
-    }
-    if (_username.isEmpty || _password.isEmpty) {
-      _showToast("Enter username & password");
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    // API call இங்க வரும் - இப்போ simulate பண்றோம்
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() => _isLoading = false);
-      _showToast("Login Successful ✅");
-      // Navigator.pushReplacementNamed(context, '/main');
-    });
+    context.read<AuthCubit>().login(
+          username: _usernameCtrl.text.trim(),
+          password: _passwordCtrl.text.trim(),
+          captchaInput: _captchaCtrl.text.trim(),
+        );
   }
 
-  void _showToast(String msg) {
+  // ── Captcha Refresh ───────────────────────────────────────
+  // RN: handleRefreshCaptcha() → triggerShake() → refreshCaptcha()
+  void _handleRefreshCaptcha() {
+    _captchaCtrl.clear();
+    _shakeAnimCtrl.forward(from: 0);
+    context.read<AuthCubit>().refreshCaptcha();
+  }
+
+  void _showMsg(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg, style: const TextStyle(fontFamily: 'OpenSans')),
-        backgroundColor: _gold,
+        backgroundColor: isError ? AppColors.statusRed : AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
 
-  // ── Entity Dropdown ──────────────────────────────────────
-  void _showEntitySheet() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
+  // ── BUILD ─────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = VBHCColors(isDark);
+
+    return BlocConsumer<AuthCubit, AuthState>(
+      listener: (context, state) {
+        if (state.error != null) {
+          _showMsg(state.error!, isError: true);
+          if (Environment.showCaptcha) _handleRefreshCaptcha();
+          context.read<AuthCubit>().clearError();
+        }
+        if (state.isLoggedIn) {
+          _showMsg("Login successful ✅");
+          // TODO: context.go('/main');
+        }
+      },
+      builder: (context, authState) {
+        return Scaffold(
+          backgroundColor: colors.backgroundWhite,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(colors),
+                Expanded(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GestureDetector(
+                      onTap: () => FocusScope.of(context).unfocus(),
+                      child: Column(
+                        children: [
+                          _buildCard(colors, authState, isDark),
+                          const SizedBox(height: 12),
+                          Text(
+                            "${Environment.appVersion} | ${Environment.releaseDate}",
+                            style: TextStyle(
+                              color: colors.textGray,
+                              fontSize: 12,
+                              fontFamily: 'OpenSans',
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            const Text(
-              "Select Entity",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'OpenSans',
-              ),
-            ),
-            const SizedBox(height: 8),
-            ..._entities.map((e) => ListTile(
-                  title:
-                      Text(e, style: const TextStyle(fontFamily: 'OpenSans')),
-                  leading: const Icon(Icons.business_outlined, color: _gold),
-                  onTap: () {
-                    setState(() => _entityName = e);
-                    Navigator.pop(ctx);
-                  },
-                )),
-            const SizedBox(height: 16),
-          ],
+          ),
         );
       },
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgWhite,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── HEADER (vbhc_portrait image) ──────────────
-            _buildHeader(),
-
-            // ── SCROLLABLE BODY ───────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GestureDetector(
-                  onTap: () => FocusScope.of(context).unfocus(),
-                  child: Column(
-                    children: [
-                      // ── LOGIN CARD ─────────────────────
-                      _buildLoginCard(),
-                      const SizedBox(height: 12),
-
-                      // ── Version Text ───────────────────
-                      Text(
-                        "V 1.0 | 13-Nov-2024",
-                        style: TextStyle(
-                          color: _iconGray,
-                          fontSize: 12,
-                          fontFamily: 'OpenSans',
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── HEADER WIDGET ────────────────────────────────────────
-  Widget _buildHeader() {
+  // ── HEADER ───────────────────────────────────────────────
+  Widget _buildHeader(VBHCColors colors) {
     return FadeTransition(
       opacity: _logoOpacity,
       child: Container(
         height: 160,
         width: double.infinity,
-        color: _bgWhite,
+        color: colors.backgroundWhite,
         padding: const EdgeInsets.symmetric(vertical: 16),
         child: Image.asset(
-          '../../assets/images/vbhc_portrait.png',
+          'assets/images/vbhc_portrait.png',
           fit: BoxFit.contain,
           errorBuilder: (_, __, ___) => Center(
             child: Text(
@@ -242,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen>
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
-                color: _gold,
+                color: AppColors.gold,
                 fontFamily: 'OpenSans',
               ),
             ),
@@ -253,28 +231,29 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   // ── LOGIN CARD ───────────────────────────────────────────
-  Widget _buildLoginCard() {
+  Widget _buildCard(
+    VBHCColors colors,
+    AuthState authState,
+    bool isDark,
+  ) {
     return AnimatedBuilder(
       animation: Listenable.merge([_cardAnimCtrl, _logoAnimCtrl]),
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _cardSlide.value),
-          child: Opacity(
-            opacity: _logoOpacity.value,
-            child: child,
-          ),
-        );
-      },
+      builder: (_, child) => Transform.translate(
+        offset: Offset(0, _cardSlide.value),
+        child: Opacity(opacity: _logoOpacity.value, child: child),
+      ),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(22),
-        margin: const EdgeInsets.only(bottom: 20),
+        margin: const EdgeInsets.only(top: 10, bottom: 20),
         decoration: BoxDecoration(
-          color: _bgWhite,
+          color: colors.backgroundWhite,
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.45)
+                  : Colors.black.withValues(alpha: 0.10),
               offset: const Offset(0, 8),
               blurRadius: 10,
             ),
@@ -283,47 +262,59 @@ class _LoginScreenState extends State<LoginScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Welcome Header ───────────────────────────
-            _buildWelcomeHeader(),
+            // ── Welcome ──────────────────────────────────
+            _buildWelcome(colors),
             const SizedBox(height: 18),
 
-            // ── Trust Row ────────────────────────────────
-            _buildTrustRow(),
+            // ── Trust Row ─────────────────────────────────
+            _buildTrustRow(colors),
             const SizedBox(height: 18),
 
-            // ── Entity Dropdown ──────────────────────────
-            _buildEntityField(),
+            // ── ENTITY DROPDOWN (Real API) ────────────────
+            _buildEntityDropdown(colors, authState),
             const SizedBox(height: 14),
 
-            // ── Username ─────────────────────────────────
-            _buildTextField(
+            // ── USERNAME ──────────────────────────────────
+            _buildField(
+              colors: colors,
+              ctrl: _usernameCtrl,
               hint: "Username",
               icon: Icons.person_outline,
-              onChanged: (v) => _username = v,
-              controller: _usernameCtrl,
             ),
             const SizedBox(height: 14),
 
-            // ── Password ─────────────────────────────────
-            _buildPasswordField(),
+            // ── PASSWORD ──────────────────────────────────
+            _buildField(
+              colors: colors,
+              ctrl: _passwordCtrl,
+              hint: "Password",
+              icon: Icons.lock_outline,
+              isPassword: true,
+            ),
             const SizedBox(height: 8),
 
-            // ── Forgot Password ──────────────────────────
-            _buildForgotPassword(),
+            // ── CAPTCHA (DEV=false, SIT/UAT/PROD=true) ────
+            if (Environment.showCaptcha) ...[
+              _buildCaptcha(colors, authState),
+              const SizedBox(height: 8),
+            ],
+
+            // ── FORGOT PASSWORD ───────────────────────────
+            _buildForgotPassword(colors),
             const SizedBox(height: 10),
 
-            // ── Login Button ─────────────────────────────
-            _buildLoginButton(),
+            // ── LOGIN BUTTON ──────────────────────────────
+            _buildLoginButton(colors, authState),
             const SizedBox(height: 16),
 
-            // ── Quote ────────────────────────────────────
+            // Quote
             Center(
               child: Text(
                 '"Security is not a product, but a process."',
                 style: TextStyle(
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
-                  color: _trustText,
+                  color: colors.textLabelColor,
                   fontFamily: 'OpenSans',
                 ),
                 textAlign: TextAlign.center,
@@ -335,19 +326,18 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Welcome Header ───────────────────────────────────────
-  Widget _buildWelcomeHeader() {
+  // ── Welcome ───────────────────────────────────────────────
+  Widget _buildWelcome(VBHCColors colors) {
     return Column(
       children: [
         Center(
           child: Text(
             "Welcome Back",
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: _textBlack,
-              fontFamily: 'OpenSans',
-            ),
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: colors.textBlack,
+                fontFamily: 'OpenSans'),
           ),
         ),
         const SizedBox(height: 4),
@@ -355,10 +345,9 @@ class _LoginScreenState extends State<LoginScreen>
           child: Text(
             "Sign in to access your secure VBHC workspace",
             style: TextStyle(
-              fontSize: 13,
-              color: _trustText,
-              fontFamily: 'OpenSans',
-            ),
+                fontSize: 13,
+                color: colors.textLabelColor,
+                fontFamily: 'OpenSans'),
             textAlign: TextAlign.center,
           ),
         ),
@@ -366,94 +355,133 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Trust Row (Secure | Encrypted | Enterprise) ──────────
-  Widget _buildTrustRow() {
+  // ── Trust Row ─────────────────────────────────────────────
+  Widget _buildTrustRow(VBHCColors colors) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _trustItem(Icons.shield_outlined, "Secure Login"),
-        _trustItem(Icons.lock_outline, "Encrypted Data"),
-        _trustItem(Icons.business_outlined, "Enterprise Ready"),
+        _trustItem(colors, Icons.shield_outlined, "Secure Login"),
+        _trustItem(colors, Icons.lock_outline, "Encrypted Data"),
+        _trustItem(colors, Icons.business_outlined, "Enterprise Ready"),
       ],
     );
   }
 
-  Widget _trustItem(IconData icon, String label) {
+  Widget _trustItem(VBHCColors colors, IconData icon, String label) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: _gold),
+        Icon(icon, size: 18, color: AppColors.gold),
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: _trustText,
-            fontFamily: 'OpenSans',
-          ),
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: colors.textLabelColor,
+              fontFamily: 'OpenSans'),
         ),
       ],
     );
   }
 
-  // ── Entity Field ─────────────────────────────────────────
-  Widget _buildEntityField() {
-    return GestureDetector(
-      onTap: _showEntitySheet,
-      child: Container(
-        height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: _bgWhite,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _inputBorder),
+  // ── ENTITY DROPDOWN ──────────────────────────────────────
+  // RN: ModalDropdown → entities → dispatch(setSelectedEntity)
+  Widget _buildEntityDropdown(VBHCColors colors, AuthState authState) {
+    final items = authState.entities
+        .map((e) => DropdownItem<EntityModel>(
+              value: e,
+              label: e.name ?? "",
+              icon: Icons.business_outlined,
+            ))
+        .toList();
+
+    return CustomDropdownPicker<EntityModel>(
+      hint: "Select Entity",
+      value: authState.selectedEntity,
+      items: items,
+      searchable: items.length > 5,
+      clearable: false,
+      disabled: authState.isEntityLoading,
+      mode: DropdownMode.bottomSheet,
+      theme: DropdownThemeData(
+        primaryColor: AppColors.gold,
+        borderColor: colors.borderColor,
+        activeBorderColor: AppColors.gold,
+        backgroundColor: colors.backgroundWhite,
+        overlayColor: colors.backgroundWhite,
+        selectedItemColor: AppColors.gold,
+        hintColor: colors.textInputPlaceholder,
+        borderRadius: 14,
+        hintStyle: TextStyle(
+          color: colors.textInputPlaceholder,
+          fontFamily: 'OpenSans',
+          fontSize: 15,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _entityName.isEmpty ? "Select Entity" : _entityName,
-              style: TextStyle(
-                color: _entityName.isEmpty ? _iconGray : _textBlack,
-                fontFamily: 'OpenSans',
-                fontSize: 15,
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_down, color: _iconGray),
-          ],
+        itemStyle: TextStyle(
+          color: colors.textBlack,
+          fontFamily: 'OpenSans',
+          fontSize: 15,
         ),
       ),
+      prefixIcon: authState.isEntityLoading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.gold,
+              ),
+            )
+          : Icon(Icons.business_outlined, color: colors.textGray, size: 20),
+      onChanged: (entity) {
+        if (entity != null) {
+          // RN: dispatch(setSelectedEntity(entity))
+          context.read<AuthCubit>().selectEntity(entity);
+        }
+      },
     );
   }
 
-  // ── Text Field ───────────────────────────────────────────
-  Widget _buildTextField({
+  // ── Input Field ───────────────────────────────────────────
+  Widget _buildField({
+    required VBHCColors colors,
+    required TextEditingController ctrl,
     required String hint,
     required IconData icon,
-    required Function(String) onChanged,
-    required TextEditingController controller,
+    bool isPassword = false,
   }) {
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: _bgWhite,
+        color: colors.textInputBackground,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _inputBorder),
+        border: Border.all(color: colors.borderColor),
       ),
       child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        style: const TextStyle(
-          color: _textBlack,
+        controller: ctrl,
+        obscureText: isPassword && !_showPassword,
+        style: TextStyle(
+          color: colors.textInputTextColor,
           fontFamily: 'OpenSans',
         ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: _iconGray,
+          hintStyle: TextStyle(
+            color: colors.textInputPlaceholder,
             fontFamily: 'OpenSans',
           ),
-          prefixIcon: Icon(icon, color: _iconGray, size: 20),
+          prefixIcon: Icon(icon, color: colors.textGray, size: 20),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    _showPassword ? Icons.visibility : Icons.visibility_off,
+                    color: colors.textGray,
+                    size: 22,
+                  ),
+                  onPressed: () =>
+                      setState(() => _showPassword = !_showPassword),
+                )
+              : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
@@ -464,68 +492,106 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Password Field ───────────────────────────────────────
-  Widget _buildPasswordField() {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: _bgWhite,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _inputBorder),
-      ),
-      child: TextField(
-        controller: _passwordCtrl,
-        obscureText: !_showPassword,
-        onChanged: (v) => _password = v,
-        style: const TextStyle(color: _textBlack, fontFamily: 'OpenSans'),
-        decoration: InputDecoration(
-          hintText: "Password",
-          hintStyle: const TextStyle(color: _iconGray, fontFamily: 'OpenSans'),
-          prefixIcon:
-              const Icon(Icons.lock_outline, color: _iconGray, size: 20),
-          suffixIcon: IconButton(
-            icon: Icon(
-              _showPassword ? Icons.visibility : Icons.visibility_off,
-              color: _iconGray,
-              size: 22,
+  // ── CAPTCHA ───────────────────────────────────────────────
+  // RN: captchaData?.captcha_image_url → Image + TextInput
+  Widget _buildCaptcha(VBHCColors colors, AuthState authState) {
+    return Column(
+      children: [
+        // Captcha image row with shake animation
+        AnimatedBuilder(
+          animation: _shakeAnim,
+          builder: (_, child) => Transform.translate(
+            offset: Offset(_shakeAnim.value, 0),
+            child: child,
+          ),
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: colors.textInputBackground,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.borderColor),
             ),
-            onPressed: () => setState(() => _showPassword = !_showPassword),
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 15,
+            child: Row(
+              children: [
+                Expanded(
+                  child: authState.isCaptchaLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.gold,
+                          ),
+                        )
+                      : authState.captcha?.captchaImageUrl != null
+                          ? Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Image.network(
+                                authState.captcha!.captchaImageUrl!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Center(
+                                  child: Text(
+                                    "Captcha Error",
+                                    style: TextStyle(color: colors.textGray),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Text(
+                                "Loading captcha...",
+                                style: TextStyle(
+                                  color: colors.textGray,
+                                  fontFamily: 'OpenSans',
+                                ),
+                              ),
+                            ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: AppColors.gold),
+                  onPressed: _handleRefreshCaptcha,
+                  tooltip: "Refresh Captcha",
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 10),
+
+        // Captcha input
+        _buildField(
+          colors: colors,
+          ctrl: _captchaCtrl,
+          hint: "Enter captcha",
+          icon: Icons.security_outlined,
+        ),
+      ],
     );
   }
 
-  // ── Forgot Password ──────────────────────────────────────
-  Widget _buildForgotPassword() {
+  // ── Forgot Password ───────────────────────────────────────
+  Widget _buildForgotPassword(VBHCColors colors) {
     return Align(
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: () {
-          // Navigator.pushNamed(context, '/forgot-password');
+          // TODO: Navigate to ForgotPasswordScreen
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: _gold.withValues(alpha: 0.08),
+            color: AppColors.gold.withOpacity(0.08),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.key_outlined, size: 14, color: _gold),
-              const SizedBox(width: 4),
-              const Text(
+              Icon(Icons.key_outlined, size: 14, color: AppColors.gold),
+              SizedBox(width: 4),
+              Text(
                 "Forgot Password?",
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: _gold,
+                  color: AppColors.gold,
                   fontFamily: 'OpenSans',
                 ),
               ),
@@ -536,21 +602,23 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ── Login Button ─────────────────────────────────────────
-  Widget _buildLoginButton() {
+  // ── LOGIN BUTTON ──────────────────────────────────────────
+  Widget _buildLoginButton(VBHCColors colors, AuthState authState) {
+    final isLoading = authState.isLoading || authState.isModulesLoading;
+
     return ScaleTransition(
       scale: _buttonScale,
       child: GestureDetector(
-        onTap: _isLoading ? null : _handleLogin,
+        onTap: isLoading ? null : _handleLogin,
         child: Container(
           width: double.infinity,
           height: 54,
           decoration: BoxDecoration(
-            color: _gold, // appThemeColor = gold
+            color: AppColors.gold,
             borderRadius: BorderRadius.circular(18),
           ),
           child: Center(
-            child: _isLoading
+            child: isLoading
                 ? const CircularProgressIndicator(
                     color: Colors.white,
                     strokeWidth: 2,

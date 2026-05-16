@@ -496,7 +496,9 @@ class _MultiSelectDropdownPickerState<T>
       list.remove(val);
     } else {
       if (widget.maxSelections != null &&
-          list.length >= widget.maxSelections!) return;
+          list.length >= widget.maxSelections!) {
+        return;
+      }
       list.add(val);
     }
     widget.onChanged(list);
@@ -1831,7 +1833,9 @@ class _MultiBottomSheetPanelState<T>
         _selected.remove(val);
       } else {
         if (widget.maxSelections != null &&
-            _selected.length >= widget.maxSelections!) return;
+            _selected.length >= widget.maxSelections!) {
+          return;
+        }
         _selected.add(val);
       }
     });

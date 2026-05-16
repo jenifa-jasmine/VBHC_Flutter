@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-
+  http: ^1.2.1
   # ── State Management ──────────────────────────────────────────────────────
   flutter_bloc: ^9.1.1
   bloc: ^9.2.1

@@ -13,7 +13,7 @@
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
+import 'dart:convert';
 import '../../core/constants/environment.dart';
 import 'dart:async';
 
@@ -62,8 +62,63 @@ class ApiClient {
 
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: _onRequest,
-        onError: _onError,
+        onRequest: (options, handler) async {
+          print("   ");
+          print("========================================");
+          print("API REQUEST");
+          print("METHOD : ${options.method}");
+          print("URL    : ${options.uri}");
+
+          if (options.headers.isNotEmpty) {
+            print("HEADERS:");
+            print(options.headers);
+          }
+
+          if (options.data != null) {
+            print("BODY:");
+            print(const JsonEncoder.withIndent('  ').convert(options.data));
+          }
+
+          print("========================================");
+          print("");
+
+          await _onRequest(options, handler);
+        },
+        onResponse: (response, handler) {
+          print("");
+          print("========================================");
+          print("API RESPONSE");
+          print("URL         : ${response.requestOptions.uri}");
+          print("STATUS CODE : ${response.statusCode}");
+
+          print("RESPONSE:");
+          print(const JsonEncoder.withIndent('  ').convert(response.data));
+
+          print("========================================");
+          print("");
+
+          handler.next(response);
+        },
+        onError: (err, handler) async {
+          print("");
+          print("========================================");
+          print("API ERROR");
+          print("URL         : ${err.requestOptions.uri}");
+          print("STATUS CODE : ${err.response?.statusCode}");
+          print("MESSAGE     : ${err.message}");
+
+          if (err.response?.data != null) {
+            print("ERROR RESPONSE:");
+            print(
+              const JsonEncoder.withIndent('  ').convert(err.response?.data),
+            );
+          }
+
+          print("========================================");
+          print("");
+
+          await _onError(err, handler);
+        },
       ),
     );
   }
